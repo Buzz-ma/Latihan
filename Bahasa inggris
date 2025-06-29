@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pelajaran Bahasa Inggris - Berdasarkan Jenjang</title>
+    <style>
+        /* Basic Reset & Body Styling */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f7f6;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        /* Container for the main content */
+        .container {
+            max-width: 900px;
+            margin: 30px auto;
+            background-color: #ffffff;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e0e0e0;
+        }
+
+        /* Main Heading */
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 40px;
+            font-size: 2.8em;
+            letter-spacing: -0.5px;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 15px;
+            display: inline-block;
+            width: 100%;
+        }
+
+        /* Section Heading (e.g., SD, SMP, SMA) */
+        h2 {
+            color: #34495e;
+            margin-top: 30px;
+            margin-bottom: 20px;
+            font-size: 2.2em;
+            border-left: 6px solid #3498db;
+            padding-left: 15px;
+            background-color: #ecf0f1;
+            padding-top: 8px;
+            padding-bottom: 8px;
+            border-radius: 4px;
+        }
+
+        /* List Styling for classes */
+        ul {
+            list-style: none; /* Remove default bullet points */
+            padding: 0;
+            margin: 0;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); /* Responsive grid */
+            gap: 15px; /* Space between grid items */
+        }
+
+        li {
+            background-color: #eaf6fd;
+            border: 1px solid #aed6f1;
+            border-radius: 8px;
+            overflow: hidden; /* Ensures padding and border behave as expected */
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        li:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        /* Link Styling for each class */
+        li a {
+            display: block; /* Make the whole list item clickable */
+            padding: 18px 25px;
+            text-decoration: none;
+            color: #2c3e50;
+            font-weight: bold;
+            font-size: 1.2em;
+            text-align: center;
+            white-space: nowrap; /* Prevent text wrapping */
+        }
+
+        li a:hover {
+            background-color: #3498db;
+            color: #ffffff;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .container {
+                padding: 25px;
+                margin: 20px auto;
+            }
+            h1 {
+                font-size: 2em;
+                margin-bottom: 30px;
+            }
+            h2 {
+                font-size: 1.8em;
+            }
+            li a {
+                font-size: 1.1em;
+                padding: 15px 20px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 10px;
+            }
+            .container {
+                padding: 15px;
+            }
+            h1 {
+                font-size: 1.8em;
+                padding-bottom: 10px;
+            }
+            h2 {
+                font-size: 1.6em;
+                padding-left: 10px;
+            }
+            ul {
+                grid-template-columns: 1fr; /* Single column on very small screens */
+            }
+            li a {
+                font-size: 1em;
+                padding: 12px 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Pelajaran Bahasa Inggris Berdasarkan Jenjang</h1>
+
+        <section>
+            <h2>SD</h2>
+            <ul>
+                <li><a href="#kelas1sd">Kelas 1</a></li>
+                <li><a href="#kelas2sd">Kelas 2</a></li>
+                <li><a href="#kelas3sd">Kelas 3</a></li>
+                <li><a href="#kelas4sd">Kelas 4</a></li>
+                <li><a href="#kelas5sd">Kelas 5</a></li>
+                <li><a href="#kelas6sd">Kelas 6</a></li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>SMP/Sederajat</h2>
+            <ul>
+                <li><a href="#kelas7smp">Kelas 7</a></li>
+                <li><a href="#kelas8smp">Kelas 8</a></li>
+                <li><a href="#kelas9smp">Kelas 9</a></li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>SMA/Sederajat</h2>
+            <ul>
+                <li><a href="#kelas10sma">Kelas 10</a></li>
+                <li><a href="#kelas11sma">Kelas 11</a></li>
+                <li><a href="#kelas12sma">Kelas 12</a></li>
+            </ul>
+        </section>
+    </div>
+</body>
+</html>
