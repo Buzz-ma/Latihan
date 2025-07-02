@@ -1,0 +1,1654 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tebak Kata Harian Pribadi</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts - Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5; /* Light gray background */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+            overflow-y: auto; /* Allow scrolling for taller content */
+        }
+        .app-container {
+            background-color: #ffffff;
+            padding: 32px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            max-width: 500px; /* Lebar maksimum container */
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            position: relative; /* Untuk posisi absolut layar */
+        }
+
+        /* --- Screen Management --- */
+        .screen {
+            display: none; /* Semua layar disembunyikan secara default */
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            gap: 20px;
+        }
+        .screen.active {
+            display: flex; /* Hanya layar aktif yang ditampilkan */
+        }
+
+        h1 {
+            color: #333;
+            font-size: 2.25rem;
+            font-weight: 800; /* Lebih tebal */
+            margin-bottom: 1rem;
+        }
+
+        /* --- Main Menu & Game Buttons --- */
+        .menu-button, .game-action-button, .difficulty-button {
+            background-color: #6366f1; /* Warna ungu */
+            color: #ffffff;
+            padding: 15px 30px;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out;
+            box-shadow: 0 6px 15px rgba(99, 102, 241, 0.3);
+            width: 80%; /* Lebar tombol menu */
+            max-width: 300px;
+        }
+        .menu-button:hover, .game-action-button:hover, .difficulty-button:hover {
+            background-color: #4f46e5; /* Ungu lebih gelap saat hover */
+            transform: translateY(-2px);
+        }
+        .menu-button:active, .game-action-button:active, .difficulty-button:active {
+            transform: translateY(0);
+        }
+        .menu-button.secondary, .game-action-button.secondary, .difficulty-button.secondary {
+            background-color: #cbd5e1;
+            color: #475569;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+        .menu-button.secondary:hover, .game-action-button.secondary:hover, .difficulty-button.secondary:hover {
+            background-color: #94a3b8;
+        }
+
+        /* --- Game Grid Styles --- */
+        .game-grid {
+            display: grid;
+            gap: 8px; /* Jarak antar baris */
+            margin-bottom: 20px;
+            width: 100%; /* Pastikan grid mengambil lebar penuh */
+            justify-content: center; /* Pusatkan grid di dalam container */
+        }
+        .grid-row {
+            display: grid;
+            gap: 8px; /* Jarak antar kotak huruf */
+            justify-content: center;
+        }
+        .grid-cell {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 1 / 1; /* Kotak persegi */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: clamp(1.2rem, 5vw, 2.2rem); /* Ukuran font responsif disesuaikan */
+            font-weight: 800; /* Lebih tebal */
+            border: 2px solid #cbd5e1; /* Border default */
+            border-radius: 8px;
+            color: #333;
+            text-transform: uppercase;
+            background-color: #ffffff;
+            transition: transform 0.3s ease-out; /* For flip animation */
+            transform-style: preserve-3d; /* For flip animation */
+            backface-visibility: hidden; /* For flip animation */
+        }
+
+        /* Flip animation */
+        .grid-cell.flipping {
+            animation: flip 0.5s ease-out forwards;
+        }
+        @keyframes flip {
+            0% { transform: rotateX(0deg); background-color: #ffffff; color: #333; border-color: #cbd5e1; }
+            50% { transform: rotateX(90deg); }
+            100% { transform: rotateX(0deg); }
+        }
+
+        .grid-cell.correct {
+            background-color: #10b981; /* Hijau */
+            border-color: #10b981;
+            color: #ffffff;
+        }
+        .grid-cell.present {
+            background-color: #facc15; /* Kuning */
+            border-color: #facc15;
+            color: #ffffff;
+        }
+        .grid-cell.absent {
+            background-color: #94a3b8; /* Abu-abu */
+            border-color: #94a3b8;
+            color: #ffffff;
+        }
+        .grid-cell.filled {
+             border-color: #64748b; /* Border lebih gelap saat terisi */
+        }
+        .grid-row.shaking {
+            animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+            transform: translate3d(0, 0, 0);
+            backface-visibility: hidden;
+            perspective: 1000px;
+        }
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+
+        /* --- Toast Message --- */
+        #toast-container {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .toast {
+            background-color: #333;
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+            transform: translateY(-20px);
+            max-width: 300px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* --- Keyboard Styles --- */
+        .keyboard {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 20px;
+        }
+        .keyboard-row {
+            display: flex;
+            justify-content: center;
+            gap: 6px;
+        }
+        .key {
+            background-color: #e2e8f0; /* Default key color */
+            color: #333;
+            padding: 12px 0;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            flex-grow: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-width: 30px; /* Minimum width for keys */
+            transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+            user-select: none;
+        }
+        .key.large {
+            flex-grow: 1.5; /* Larger keys like Enter/Backspace */
+            font-size: 0.8rem;
+        }
+        .key:hover:not(.correct):not(.present):not(.absent):not(.disabled) {
+            background-color: #cbd5e1;
+        }
+        .key.correct {
+            background-color: #10b981; /* Hijau */
+            color: #ffffff;
+        }
+        .key.present {
+            background-color: #facc15; /* Kuning */
+            color: #ffffff;
+        }
+        .key.absent {
+            background-color: #94a3b8; /* Abu-abu */
+            color: #ffffff;
+        }
+        .key.disabled {
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        /* --- Modal Styles (General) --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1001;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+        }
+        .modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-content {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+            transform: translateY(-20px);
+            transition: transform 0.3s ease-in-out;
+            max-height: 90vh; /* Batasi tinggi modal */
+            overflow-y: auto; /* Aktifkan scroll jika konten terlalu panjang */
+        }
+        .modal-overlay.show .modal-content {
+            transform: translateY(0);
+        }
+        .modal-content h2 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .modal-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 25px;
+        }
+        .modal-buttons button {
+            background-color: #0ea5e9;
+            color: #ffffff;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out;
+        }
+        .modal-buttons button:hover {
+            background-color: #0284c7;
+        }
+        .modal-buttons button.secondary {
+            background-color: #cbd5e1;
+            color: #475569;
+        }
+        .modal-buttons button.secondary:hover {
+            background-color: #94a3b8;
+        }
+
+        /* --- Specific Modal Styles (Stats, About, Leaderboard) --- */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-size: 0.9rem;
+            color: #475569;
+        }
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: #6366f1;
+        }
+        .guess-distribution {
+            margin-top: 20px;
+        }
+        .guess-distribution h3 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .distribution-bar-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 5px;
+        }
+        .distribution-label {
+            font-weight: 600;
+            color: #475569;
+            width: 20px;
+            text-align: right;
+        }
+        .distribution-bar {
+            flex-grow: 1;
+            height: 20px;
+            background-color: #e2e8f0;
+            border-radius: 4px;
+            position: relative;
+            text-align: right;
+            padding-right: 5px;
+            color: #333;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        .distribution-fill {
+            height: 100%;
+            background-color: #6366f1;
+            border-radius: 4px;
+            transition: width 0.5s ease-out;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            color: #fff;
+            padding-right: 5px;
+        }
+
+        /* About & Leaderboard specific styles */
+        .modal-content p {
+            font-size: 1rem;
+            color: #475569;
+            margin-bottom: 15px;
+            line-height: 1.5;
+        }
+        .modal-content ul {
+            list-style: disc;
+            padding-left: 20px;
+            text-align: left;
+            color: #475569;
+            margin-bottom: 15px;
+        }
+        .modal-content ul li {
+            margin-bottom: 5px;
+        }
+        .leaderboard-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            font-size: 0.95rem;
+        }
+        .leaderboard-table th, .leaderboard-table td {
+            border: 1px solid #e2e8f0;
+            padding: 8px 12px;
+            text-align: left;
+        }
+        .leaderboard-table th {
+            background-color: #f8fafc;
+            font-weight: 600;
+            color: #333;
+        }
+        .leaderboard-table td {
+            color: #475569;
+        }
+        .leaderboard-table tbody tr:nth-child(even) {
+            background-color: #f8fafc;
+        }
+        .word-definition {
+            margin-top: 25px;
+            padding-top: 15px;
+            border-top: 1px solid #e2e8f0;
+        }
+        .word-definition h3 {
+            font-semibold text-lg text-gray-700;
+            margin-bottom: 8px;
+        }
+        .word-definition p {
+            margin-bottom: 5px;
+            font-size: 0.95rem;
+        }
+        .word-definition a {
+            color: #3b82f6; /* Tailwind blue-500 */
+            text-decoration: underline;
+        }
+        .word-definition a:hover {
+            color: #2563eb; /* Tailwind blue-600 */
+        }
+        /* New: Win Message Styling */
+        #win-message-section {
+            background-color: #ecfdf5; /* Light green background */
+            border: 1px solid #a7f3d0; /* Green border */
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        /* Social share buttons specific styling */
+        .social-share-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 15px;
+            flex-wrap: wrap; /* Allow wrapping on smaller screens */
+        }
+        .social-share-buttons button {
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.9rem;
+        }
+        .social-share-buttons button.twitter {
+            background-color: #1DA1F2;
+            color: white;
+        }
+        .social-share-buttons button.twitter:hover {
+            background-color: #0c85d0;
+        }
+        .social-share-buttons button.facebook {
+            background-color: #1877F2;
+            color: white;
+        }
+        .social-share-buttons button.facebook:hover {
+            background-color: #145cb3;
+        }
+        .social-share-buttons button.whatsapp {
+            background-color: #25D366;
+            color: white;
+        }
+        .social-share-buttons button.whatsapp:hover {
+            background-color: #1eaf53;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Toast Container (always visible) -->
+        <div id="toast-container"></div>
+
+        <!-- Main Menu Screen -->
+        <div id="main-menu-screen" class="screen active">
+            <h1>Tebak Kata Harian</h1>
+            <button id="play-button" class="menu-button">Mulai Main</button>
+            <button id="show-personal-best-button-menu" class="menu-button secondary">Rekor Pribadi</button>
+            <button id="show-about-button-menu" class="menu-button secondary">Tentang Game</button>
+        </div>
+
+        <!-- Difficulty Selection Screen -->
+        <div id="difficulty-selection-screen" class="screen">
+            <h1>Pilih Tingkat Kesulitan</h1>
+            <div class="flex flex-col gap-4 w-full items-center">
+                <button data-difficulty="mudah" class="difficulty-button">Mudah (Banyak Hint)</button>
+                <button data-difficulty="lumayan" class="difficulty-button">Lumayan (Sedikit Hint)</button>
+                <button data-difficulty="sulit" class="difficulty-button">Sulit (Tanpa Hint)</button>
+            </div>
+            <button id="back-to-main-menu-from-difficulty" class="menu-button secondary mt-4">Kembali ke Menu</button>
+        </div>
+
+        <!-- Game Screen -->
+        <div id="game-screen" class="screen">
+            <h1 id="game-title">Tebak Kata Harian</h1>
+            <div id="game-grid" class="game-grid">
+                <!-- Grid akan diisi oleh JavaScript -->
+            </div>
+            <div id="keyboard" class="keyboard">
+                <!-- Keyboard akan diisi oleh JavaScript -->
+            </div>
+            <div class="flex flex-col gap-4 w-full items-center mt-4">
+                <button id="hint-button" class="game-action-button" style="display: none;">Hint (0)</button>
+                <button id="copy-result-button" class="game-action-button" style="display: none;">Salin Hasil</button>
+                
+                <!-- New Social Share Buttons -->
+                <div id="social-share-buttons" class="social-share-buttons" style="display: none;">
+                    <button id="share-twitter-button" class="twitter">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><g><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"></path></g></svg>
+                        Twitter
+                    </button>
+                    <button id="share-facebook-button" class="facebook">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M12 2.04C6.51 2.04 2 6.55 2 12.04c0 4.96 3.61 9.09 8.36 9.88V14.8h-2.2v-2.76h2.2v-2.1c0-2.17 1.33-3.36 3.27-3.36 0.94 0 1.75 0.07 1.99 0.1v2.3h-1.35c-1.06 0-1.27 0.5-1.27 1.24v1.62h2.55l-0.33 2.76h-2.22v6.92c4.75-0.79 8.36-4.92 8.36-9.88 0-5.49-4.51-10-10-10z"/></svg>
+                        Facebook
+                    </button>
+                    <button id="share-whatsapp-button" class="whatsapp">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M12 2C6.477 2 2 6.477 2 12c0 2.443 0.852 4.705 2.296 6.488L2.012 22l3.712-1.212C7.545 21.36 9.71 22 12 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm3.6 14.8c-0.2 0.3-0.5 0.3-0.8 0.1l-1.3-0.8c-0.2-0.1-0.5-0.1-0.7 0.1c-0.8 0.8-1.7 1.2-2.7 1.2c-1.1 0-2.1-0.4-2.9-1.2c-0.8-0.8-1.2-1.8-1.2-2.9c0-1.1 0.4-2.1 1.2-2.9c0.2-0.2 0.5-0.2 0.7-0.1l1.3 0.8c0.2 0.1 0.5 0.1 0.8-0.1c0.3-0.2 0.3-0.5 0.1-0.8c-0.8-0.8-1.2-1.7-1.2-2.7c0-1.1 0.4-2.1 1.2-2.9c0.8-0.8 1.8-1.2 2.9-1.2c1.1 0 2.1 0.4 2.9 1.2c0.8 0.8 1.2 1.8 1.2 2.9c0 1.1-0.4 2.1-1.2 2.9c-0.2 0.2-0.5 0.2-0.8 0.1z"></path></svg>
+                        WhatsApp
+                    </button>
+                </div>
+
+                <button id="play-again-button" class="game-action-button" style="display: none;">Main Lagi</button>
+                <button id="back-to-main-menu-from-game" class="game-action-button secondary">Kembali ke Menu</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Statistik -->
+    <div id="stats-modal-overlay" class="modal-overlay">
+        <div class="modal-content">
+            <h2>Statistik Permainan</h2>
+
+            <!-- New: Win Message Section -->
+            <div id="win-message-section" style="display: none;">
+                <h3 class="font-bold text-2xl text-green-600 mb-2">🎉 Anda Menang! 🎉</h3>
+                <p class="text-lg text-gray-800">Kata rahasianya adalah: <span id="won-word-display" class="font-bold text-indigo-600"></span></p>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <span id="stat-played" class="stat-value">0</span>
+                    <span>Dimainkan</span>
+                </div>
+                <div class="stat-item">
+                    <span id="stat-win-perc" class="stat-value">0%</span>
+                    <span>Win %</span>
+                </div>
+                <div class="stat-item">
+                    <span id="stat-current-streak" class="stat-value">0</span>
+                    <span>Streak Saat Ini</span>
+                </div>
+                <div class="stat-item">
+                    <span id="stat-max-streak" class="stat-value">0</span>
+                    <span>Streak Maks</span>
+                </div>
+            </div>
+
+            <div class="guess-distribution">
+                <h3>Distribusi Tebakan</h3>
+                <div id="distribution-chart">
+                    </div>
+            </div>
+
+            <div class="word-definition mt-4">
+                <h3 class="font-semibold text-lg text-gray-700">Kata Rahasia: <span id="defined-word" class="text-indigo-600"></span></h3>
+                <p id="word-class" class="text-sm text-gray-500 italic"></p>
+                <p id="word-meaning" class="text-gray-800 mt-2">
+                    Definisi tidak dapat dimuat secara otomatis.
+                    Silakan cek di <a id="kbbi-link" href="#" target="_blank" class="text-blue-500 underline">KBBI Daring</a>.
+                </p>
+                <p id="definition-loading" class="text-gray-500 text-sm" style="display: none;">Memuat definisi...</p>
+                <p id="definition-error" class="text-red-500 text-sm" style="display: none;">Gagal memuat definisi.</p>
+            </div>
+
+            <div class="modal-buttons">
+                <button id="close-stats-button">Tutup</button>
+                <button id="play-again-from-stats-button" class="menu-button">Main Lagi</button> <!-- New button -->
+                <button id="reset-stats-button" class="secondary">Reset Statistik</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Tentang Game (About) -->
+    <div id="about-modal-overlay" class="modal-overlay">
+        <div class="modal-content">
+            <h2>Tentang Game Ini</h2>
+            <p>Game "Tebak Kata Harian" ini terinspirasi dari Wordle dan Katla.</p>
+            <p><strong>Cara Bermain:</strong></p>
+            <ul>
+                <li>Tebak kata rahasia 5 huruf dalam 6 kali percobaan.</li>
+                <li>Setiap tebakan harus berupa kata yang valid.</li>
+                <li>Setelah setiap tebakan, warna kotak akan berubah untuk menunjukkan seberapa dekat tebakan Anda dengan kata rahasia:</li>
+                <li><span class="inline-block w-4 h-4 rounded-sm bg-green-500 mr-2"></span> Hijau: Huruf benar dan posisinya benar.</li>
+                <li><span class="inline-block w-4 h-4 rounded-sm bg-yellow-400 mr-2"></span> Kuning: Huruf benar tapi posisinya salah.</li>
+                <li><span class="inline-block w-4 h-4 rounded-sm bg-gray-500 mr-2"></span> Abu-abu: Huruf tidak ada dalam kata rahasia.</li>
+            </ul>
+            <p>Kata rahasia berubah setiap hari, jadi pastikan untuk kembali dan bermain!</p>
+            <div class="modal-buttons">
+                <button id="close-about-button">Tutup</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Rekor Pribadi (Personal Best) -->
+    <div id="personal-best-modal-overlay" class="modal-overlay"> <!-- Renamed ID -->
+        <div class="modal-content">
+            <h2>Rekor Pribadi</h2> <!-- Renamed Title -->
+            <p>Ini adalah rekor statistik Anda untuk setiap tingkat kesulitan:</p>
+            <table class="leaderboard-table">
+                <thead>
+                    <tr>
+                        <th>Kesulitan</th>
+                        <th>Dimainkan</th>
+                        <th>Menang</th>
+                        <th>Win %</th>
+                        <th>Streak Maks</th>
+                    </tr>
+                </thead>
+                <tbody id="personal-best-table-body"> <!-- Renamed ID -->
+                    <!-- Personal Best data will be inserted here by JS -->
+                </tbody>
+            </table>
+            <div class="modal-buttons">
+                <button id="close-personal-best-button">Tutup</button> <!-- Renamed ID -->
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        // --- Data Kata-kata (Akan dimuat dari KBBI CSV) ---
+        let SECRET_WORDS = [];
+        let VALID_GUESSES = [];
+
+        // --- Konfigurasi Game (Fixed untuk Katla-like) ---
+        const WORD_LENGTH = 5; // Fixed for Katla-like
+        const GUESSES_ALLOWED = 6; // Fixed for Katla-like
+        // Updated LOCAL_STORAGE_KEY_PREFIX to be simpler without userId
+        const LOCAL_STORAGE_KEY_PREFIX = 'wordleCloneData_';
+        const HAS_SHOWN_HOW_TO_PLAY_KEY = 'hasShownHowToPlay'; // New key for tracking first launch
+
+        // Definisi tingkat kesulitan dan jumlah hint
+        const DIFFICULTY_SETTINGS = {
+            'mudah': { label: 'Mudah', hintCount: 3 },
+            'lumayan': { label: 'Lumayan', hintCount: 1 },
+            'sulit': { label: 'Sulit', hintCount: 0 }
+        };
+
+        // --- State Game ---
+        let secretWord = '';
+        let currentGuessIndex = 0;
+        let currentRowLetters = [];
+        let gameEnded = false;
+        let currentDifficulty = 'mudah'; // Default difficulty
+
+        // Data game dan statistik akan disimpan per kesulitan
+        let gameData = {}; // { lastPlayedDate, dailySecretWord, guesses, keyboardStatus, hasWon, puzzleNumber, hintsUsed }
+        let stats = {}; // { played, won, currentStreak, maxStreak, guessDistribution }
+
+        // --- Elemen DOM ---
+        const appContainer = document.querySelector('.app-container');
+        const mainMenuScreen = document.getElementById('main-menu-screen');
+        const difficultySelectionScreen = document.getElementById('difficulty-selection-screen');
+        const gameScreen = document.getElementById('game-screen');
+        const gameTitle = document.getElementById('game-title');
+
+        const toastContainer = document.getElementById('toast-container');
+        const gameGrid = document.getElementById('game-grid');
+        const keyboardElement = document.getElementById('keyboard');
+        const playAgainButton = document.getElementById('play-again-button');
+        const copyResultButton = document.getElementById('copy-result-button');
+        
+        // Social share buttons
+        const socialShareButtonsContainer = document.getElementById('social-share-buttons');
+        const shareTwitterButton = document.getElementById('share-twitter-button');
+        const shareFacebookButton = document.getElementById('share-facebook-button');
+        const shareWhatsAppButton = document.getElementById('share-whatsapp-button');
+
+
+        const hintButton = document.getElementById('hint-button');
+
+        const playButton = document.getElementById('play-button');
+        const showPersonalBestButtonMenu = document.getElementById('show-personal-best-button-menu'); 
+        const showAboutButtonMenu = document.getElementById('show-about-button-menu');
+
+        const backToMainMenuFromDifficulty = document.getElementById('back-to-main-menu-from-difficulty');
+        const backToMainMenuFromGame = document.getElementById('back-to-main-menu-from-game');
+
+        const statsModalOverlay = document.getElementById('stats-modal-overlay');
+        const closeStatsButton = document.getElementById('close-stats-button');
+        const resetStatsButton = document.getElementById('reset-stats-button');
+        const playAgainFromStatsButton = document.getElementById('play-again-from-stats-button');
+
+        const aboutModalOverlay = document.getElementById('about-modal-overlay');
+        const closeAboutButton = document.getElementById('close-about-button');
+
+        const personalBestModalOverlay = document.getElementById('personal-best-modal-overlay'); 
+        const closePersonalBestButton = document.getElementById('close-personal-best-button'); 
+        const personalBestTableBody = document.getElementById('personal-best-table-body'); 
+
+        // Definition elements
+        const definedWordElem = document.getElementById('defined-word');
+        const wordClassElem = document.getElementById('word-class');
+        const wordMeaningElem = document.getElementById('word-meaning');
+        const definitionLoadingElem = document.getElementById('definition-loading');
+        const definitionErrorElem = document.getElementById('definition-error');
+        const kbbiLinkElem = document.getElementById('kbbi-link');
+
+        // Win message elements
+        const winMessageSection = document.getElementById('win-message-section');
+        const wonWordDisplay = document.getElementById('won-word-display');
+
+
+        // --- Fungsi Screen Management ---
+        window.showScreen = function(screenToShow) {
+            document.querySelectorAll('.screen').forEach(screen => {
+                screen.classList.remove('active');
+            });
+            screenToShow.classList.add('active');
+        };
+
+        // --- Inisialisasi dan Pemuatan Game ---
+
+        /**
+         * Mengambil daftar kata dari file CSV di GitHub.
+         */
+        async function fetchWordList() {
+            try {
+                const response = await fetch('https://raw.githubusercontent.com/Hidayathamir/kata-kbbi-github/main/kbbi.csv');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const csvText = await response.text();
+                const words = csvText.split('\n')
+                                     .map(word => word.trim().toUpperCase())
+                                     .filter(word => word.length === WORD_LENGTH && /^[A-Z]+$/.test(word)); // Hanya huruf A-Z
+
+                // Hapus duplikat dan set sebagai SECRET_WORDS dan VALID_GUESSES
+                SECRET_WORDS = [...new Set(words)];
+                VALID_GUESSES = [...SECRET_WORDS];
+
+                if (SECRET_WORDS.length === 0) {
+                    console.error("Tidak ada kata 5 huruf yang valid ditemukan dari KBBI CSV.");
+                    showToast("Gagal memuat kata. Coba lagi nanti.", "error");
+                    return false;
+                }
+                console.log(`Berhasil memuat ${SECRET_WORDS.length} kata 5 huruf dari KBBI.`);
+                return true;
+
+            } catch (error) {
+                console.error("Error fetching word list:", error);
+                showToast("Gagal memuat daftar kata. Periksa koneksi internet Anda.", "error");
+                return false;
+            }
+        }
+
+
+        /**
+         * Memuat data game dan statistik untuk kesulitan saat ini dari local storage.
+         */
+        function loadGameDataForCurrentDifficulty() {
+            // No longer uses userId
+            const gameKey = `${LOCAL_STORAGE_KEY_PREFIX}${currentDifficulty}_game`;
+            const statsKey = `${LOCAL_STORAGE_KEY_PREFIX}${currentDifficulty}_stats`;
+
+            const savedGameData = localStorage.getItem(gameKey);
+            if (savedGameData) {
+                gameData = JSON.parse(savedGameData);
+            } else {
+                // Default gameData jika belum ada
+                gameData = {
+                    lastPlayedDate: null,
+                    dailySecretWord: '',
+                    guesses: [],
+                    keyboardStatus: {},
+                    hasWon: false,
+                    puzzleNumber: 1,
+                    hintsUsed: 0 // Initialize hints used
+                };
+            }
+
+            const savedStats = localStorage.getItem(statsKey);
+            if (savedStats) {
+                stats = JSON.parse(savedStats);
+            } else {
+                // Default stats jika belum ada
+                stats = {
+                    played: 0,
+                    won: 0,
+                    currentStreak: 0,
+                    maxStreak: 0,
+                    guessDistribution: Array(GUESSES_ALLOWED).fill(0)
+                };
+            }
+        }
+
+        /**
+         * Menyimpan data game dan statistik untuk kesulitan saat ini ke local storage.
+         */
+        function saveGameDataForCurrentDifficulty() {
+            // No longer uses userId
+            const gameKey = `${LOCAL_STORAGE_KEY_PREFIX}${currentDifficulty}_game`;
+            const statsKey = `${LOCAL_STORAGE_KEY_PREFIX}${currentDifficulty}_stats`;
+            localStorage.setItem(gameKey, JSON.stringify(gameData));
+            localStorage.setItem(statsKey, JSON.stringify(stats));
+        }
+
+        /**
+         * Memilih kata rahasia secara acak.
+         * Jika forceNew, pastikan kata berbeda dari yang terakhir.
+         * Jika bukan forceNew, tetapi ini hari baru, pilih kata acak baru.
+         * Jika bukan forceNew dan bukan hari baru, gunakan kata harian yang sudah ada.
+         * @param {boolean} forceNew - Jika true, akan selalu memilih kata baru, mengabaikan tanggal terakhir dimainkan.
+         */
+        function selectDailyWord(forceNew = false) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const todayString = today.toDateString();
+
+            // Calculate dayOfYear here, it's always needed for puzzleNumber if not forceNew
+            const dayOfYear = Math.floor((today - new Date(today.getFullYear(), 0, 0)) / 1000 / 60 / 60 / 24);
+
+            const isNewDay = gameData.lastPlayedDate !== todayString;
+            const isPreviousGameFinished = gameData.hasWon || gameData.guesses.length === GUESSES_ALLOWED;
+
+            const shouldPickNewWord = isNewDay || forceNew || (isPreviousGameFinished && !isNewDay);
+
+            if (shouldPickNewWord) {
+                let newWord = '';
+                let attempts = 0;
+                const maxAttempts = SECRET_WORDS.length * 2; // Batasi percobaan untuk menghindari loop tak terbatas
+
+                do {
+                    const randomIndex = Math.floor(Math.random() * SECRET_WORDS.length);
+                    newWord = SECRET_WORDS[randomIndex];
+                    attempts++;
+                    // Pastikan kata baru berbeda dari kata rahasia sebelumnya jika forceNew
+                } while (forceNew && newWord === secretWord && attempts < maxAttempts);
+
+                // Fallback jika tidak bisa menemukan kata yang berbeda setelah banyak percobaan (jarang terjadi)
+                if (attempts >= maxAttempts && forceNew && newWord === secretWord) {
+                    console.warn("Tidak dapat menemukan kata yang berbeda setelah banyak percobaan. Menggunakan kata yang sama.");
+                }
+
+                secretWord = newWord;
+                // Assign puzzleNumber based on forceNew or dayOfYear
+                gameData.puzzleNumber = forceNew ? Date.now() : dayOfYear;
+                gameData.dailySecretWord = secretWord;
+                gameData.lastPlayedDate = todayString; // Tetap simpan tanggal untuk daily reset
+            } else {
+                // Lanjutkan dengan kata harian yang sudah ada jika ini hari yang sama dan game sedang berlangsung
+                secretWord = gameData.dailySecretWord;
+                // Ensure puzzleNumber is consistent if continuing a game
+                // It should already be set from loaded gameData, but explicitly set it here for robustness
+                gameData.puzzleNumber = gameData.puzzleNumber || dayOfYear; // Use existing or dayOfYear if somehow missing
+            }
+        }
+
+
+        async function initGame(selectedDifficulty, forceNewGame = false) {
+            currentDifficulty = selectedDifficulty;
+            if (SECRET_WORDS.length === 0) {
+                const wordsLoaded = await fetchWordList();
+                if (!wordsLoaded) {
+                    window.showScreen(mainMenuScreen);
+                    return;
+                }
+            }
+
+            // Load existing game data for the current difficulty
+            loadGameDataForCurrentDifficulty();
+
+            // Store old secret word to check if a new word is picked
+            const oldSecretWord = gameData.dailySecretWord;
+            
+            // Select the daily word (this might update secretWord and gameData.dailySecretWord)
+            selectDailyWord(forceNewGame);
+
+            // If a new word was selected OR forceNewGame was true (meaning a fresh start was requested)
+            // THEN reset the game progress data. This fixes the bug.
+            if (secretWord !== oldSecretWord || forceNewGame) {
+                gameData.guesses = [];
+                gameData.keyboardStatus = {};
+                gameData.hasWon = false;
+                gameData.hintsUsed = 0;
+                // gameData.lastPlayedDate and gameData.dailySecretWord are already updated by selectDailyWord
+                // gameData.puzzleNumber is also updated by selectDailyWord
+            }
+
+            // Ensure guessDistribution is correctly sized
+            if (!Array.isArray(stats.guessDistribution) || stats.guessDistribution.length !== GUESSES_ALLOWED) {
+                stats.guessDistribution = Array(GUESSES_ALLOWED).fill(0);
+            } else {
+                stats.guessDistribution = stats.guessDistribution.map(val => typeof val === 'number' ? val : 0);
+            }
+
+            currentGuessIndex = gameData.guesses.length; // Will be 0 if gameData.guesses was just reset
+            currentRowLetters = [];
+            gameEnded = false;
+
+            gameTitle.textContent = `Tebak Kata Harian (${DIFFICULTY_SETTINGS[currentDifficulty].label}) #${gameData.puzzleNumber}`;
+
+            initGameUI(); // This will now render an empty grid if gameData.guesses was cleared
+            attachGameEventListeners();
+
+            updateHintButton();
+
+            // Check if the loaded gameData indicates a finished game (e.g., continuing a game from previous session)
+            // This check should happen AFTER gameData is potentially reset for a new game.
+            if (gameData.hasWon || currentGuessIndex === GUESSES_ALLOWED) {
+                gameEnded = true;
+                disableKeyboard();
+                if (!gameData.hasWon) {
+                    showToast(`Kata rahasianya adalah: ${secretWord}`, 'info');
+                }
+                copyResultButton.style.display = 'block'; // Show copy button
+                socialShareButtonsContainer.style.display = 'flex'; // Show social share buttons
+            } else {
+                enableKeyboard();
+                copyResultButton.style.display = 'none'; // Hide copy button
+                socialShareButtonsContainer.style.display = 'none'; // Hide social share buttons
+            }
+
+            playAgainButton.style.display = 'none';
+            window.showScreen(gameScreen);
+            saveGameDataForCurrentDifficulty(); // Save the potentially reset gameData
+        }
+
+        function initGameUI() {
+            createGrid();
+            createKeyboard();
+            // Only re-render guesses if there are any (i.e., continuing an ongoing game)
+            gameData.guesses.forEach((guessData, guessIdx) => {
+                guessData.letters.forEach((letter, letterIdx) => {
+                    updateGridCell(guessIdx, letterIdx, letter, guessData.colors[letterIdx]);
+                });
+            });
+            updateKeyboardColors(gameData.keyboardStatus);
+        }
+
+        function attachGameEventListeners() {
+            document.removeEventListener('keydown', handlePhysicalKeyPress);
+            keyboardElement.removeEventListener('click', handleOnScreenKeyClick);
+            playAgainButton.removeEventListener('click', () => initGame(currentDifficulty, true)); 
+            copyResultButton.removeEventListener('click', copyResultToClipboard);
+            hintButton.removeEventListener('click', handleHint); 
+
+            // Social share button event listeners
+            shareTwitterButton.removeEventListener('click', shareToTwitter);
+            shareFacebookButton.removeEventListener('click', shareToFacebook);
+            shareWhatsAppButton.removeEventListener('click', shareToWhatsApp);
+            
+            document.addEventListener('keydown', handlePhysicalKeyPress);
+            keyboardElement.addEventListener('click', handleOnScreenKeyClick);
+            playAgainButton.addEventListener('click', () => initGame(currentDifficulty, true)); 
+            copyResultButton.addEventListener('click', copyResultToClipboard);
+            hintButton.addEventListener('click', handleHint); 
+
+            // Social share button event listeners
+            shareTwitterButton.addEventListener('click', shareToTwitter);
+            shareFacebookButton.addEventListener('click', shareToFacebook);
+            shareWhatsAppButton.addEventListener('click', shareToWhatsApp);
+        }
+
+        // --- Fungsi Grid UI ---
+        function createGrid() {
+            gameGrid.innerHTML = '';
+            gameGrid.style.gridTemplateRows = `repeat(${GUESSES_ALLOWED}, 1fr)`;
+
+            for (let i = 0; i < GUESSES_ALLOWED; i++) {
+                const rowDiv = document.createElement('div');
+                rowDiv.classList.add('grid-row');
+                rowDiv.dataset.row = i;
+                rowDiv.style.gridTemplateColumns = `repeat(${WORD_LENGTH}, 1fr)`;
+                for (let j = 0; j < WORD_LENGTH; j++) {
+                    const cellDiv = document.createElement('div');
+                    cellDiv.classList.add('grid-cell');
+                    cellDiv.dataset.row = i;
+                    cellDiv.dataset.col = j;
+                    rowDiv.appendChild(cellDiv);
+                }
+                gameGrid.appendChild(rowDiv);
+            }
+        }
+
+        function updateGridCell(row, col, letter, className = '') {
+            const cell = gameGrid.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+            if (cell) {
+                cell.textContent = letter;
+                cell.classList.remove('filled', 'correct', 'present', 'absent');
+                if (className) {
+                    cell.classList.add(className);
+                }
+            }
+        }
+
+        function fillCurrentRow() {
+            for (let i = 0; i < WORD_LENGTH; i++) {
+                const letter = currentRowLetters[i] || '';
+                const className = letter ? 'filled' : '';
+                updateGridCell(currentGuessIndex, i, letter, className);
+            }
+        }
+
+        function shakeRow(rowIdx) {
+            const rowDiv = gameGrid.querySelector(`.grid-row[data-row="${rowIdx}"]`);
+            if (rowDiv) {
+                rowDiv.classList.add('shaking');
+                rowDiv.addEventListener('animationend', () => {
+                    rowDiv.classList.remove('shaking');
+                }, { once: true });
+            }
+        }
+
+        function flipCells(rowIdx, colors) {
+            const cells = gameGrid.querySelectorAll(`.grid-row[data-row="${rowIdx}"] .grid-cell`);
+            cells.forEach((cell, idx) => {
+                setTimeout(() => {
+                    cell.classList.add('flipping');
+                    cell.addEventListener('animationend', () => {
+                        cell.classList.remove('flipping');
+                        cell.classList.add(colors[idx]);
+                    }, { once: true });
+                }, idx * 100);
+            });
+        }
+
+        // --- Fungsi Keyboard UI ---
+        function createKeyboard() {
+            keyboardElement.innerHTML = '';
+            const keyboardLayout = [
+                ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
+                ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'],
+                ['ENTER', 'Z', 'X', 'C', 'V', 'B', 'N', 'M', 'BACKSPACE']
+            ];
+
+            keyboardLayout.forEach(row => {
+                const rowDiv = document.createElement('div');
+                rowDiv.classList.add('keyboard-row');
+                row.forEach(keyChar => {
+                    const keyButton = document.createElement('button');
+                    keyButton.classList.add('key');
+                    keyButton.textContent = keyChar;
+                    keyButton.dataset.key = keyChar;
+                    if (keyChar === 'ENTER' || keyChar === 'BACKSPACE') {
+                        keyButton.classList.add('large');
+                    }
+                    rowDiv.appendChild(keyButton);
+                });
+                keyboardElement.appendChild(rowDiv);
+            });
+        }
+
+        function updateKeyboardColors(status) {
+            keyboardElement.querySelectorAll('.key').forEach(key => {
+                key.classList.remove('correct', 'present', 'absent', 'disabled');
+            });
+
+            for (const letter in status) {
+                const keyButton = keyboardElement.querySelector(`[data-key="${letter}"]`);
+                if (keyButton) {
+                    if (status[letter] === 'correct') {
+                        keyButton.classList.add('correct');
+                    } else if (status[letter] === 'present') {
+                        if (!keyButton.classList.contains('correct')) {
+                            keyButton.classList.add('present');
+                        }
+                    } else if (status[letter] === 'absent') {
+                        if (!keyButton.classList.contains('correct') && !keyButton.classList.contains('present')) {
+                            keyButton.classList.add('absent');
+                        }
+                    }
+                }
+            }
+        }
+
+        // --- Fungsi Notifikasi (Toast) ---
+        window.showToast = function(text, type = '') {
+            const toast = document.createElement('div');
+            toast.classList.add('toast');
+            if (type) {
+                toast.classList.add(type);
+            }
+            toast.textContent = text;
+            toastContainer.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.add('show');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.remove('show');
+                toast.addEventListener('transitionend', () => {
+                    toast.remove();
+                });
+            }, 2000);
+        };
+
+        // --- Fungsi Logika Game ---
+        function handlePhysicalKeyPress(event) {
+            if (gameEnded) return;
+
+            const key = event.key.toUpperCase();
+
+            if (key === 'BACKSPACE') {
+                handleBackspace();
+            } else if (key === 'ENTER') {
+                handleEnter();
+            } else if (key.length === 1 && key >= 'A' && key <= 'Z') {
+                handleLetterInput(key);
+            }
+        }
+
+        function handleOnScreenKeyClick(event) {
+            if (gameEnded) return;
+
+            const target = event.target.closest('.key');
+            if (!target || target.classList.contains('disabled')) return;
+
+            const key = target.dataset.key;
+
+            if (key === 'BACKSPACE') {
+                handleBackspace();
+            } else if (key === 'ENTER') {
+                handleEnter();
+            } else if (key.length === 1 && key >= 'A' && key <= 'Z') {
+                handleLetterInput(key);
+            }
+        }
+
+        function handleLetterInput(letter) {
+            if (currentRowLetters.length < WORD_LENGTH) {
+                currentRowLetters.push(letter);
+                fillCurrentRow();
+            }
+        }
+
+        function handleBackspace() {
+            if (currentRowLetters.length > 0) {
+                currentRowLetters.pop();
+                fillCurrentRow();
+            }
+        }
+
+        async function handleEnter() {
+            if (currentRowLetters.length !== WORD_LENGTH) {
+                showToast('Kata harus ' + WORD_LENGTH + ' huruf!', 'error');
+                shakeRow(currentGuessIndex);
+                return;
+            }
+
+            const guessedWord = currentRowLetters.join('');
+
+            const currentValidGuesses = new Set(VALID_GUESSES);
+            if (!currentValidGuesses.has(guessedWord)) {
+                showToast('Bukan kata yang valid!', 'error');
+                shakeRow(currentGuessIndex);
+                return;
+            }
+
+            gameEnded = true;
+            disableKeyboard();
+
+            const secretWordLetters = secretWord.split('');
+            const guessedWordLetters = guessedWord.split('');
+            const currentGuessColors = Array(WORD_LENGTH).fill('');
+            const tempSecret = [...secretWordLetters];
+
+            for (let i = 0; i < WORD_LENGTH; i++) {
+                if (guessedWordLetters[i] === tempSecret[i]) {
+                    currentGuessColors[i] = 'correct';
+                    gameData.keyboardStatus[guessedWordLetters[i]] = 'correct';
+                    tempSecret[i] = null;
+                }
+            }
+
+            for (let i = 0; i < WORD_LENGTH; i++) {
+                if (currentGuessColors[i] === 'correct') continue;
+
+                const letter = guessedWordLetters[i];
+                const secretIndex = tempSecret.indexOf(letter);
+
+                if (secretIndex !== -1) {
+                    currentGuessColors[i] = 'present';
+                    if (gameData.keyboardStatus[letter] !== 'correct') {
+                        gameData.keyboardStatus[letter] = 'present';
+                    }
+                    tempSecret[secretIndex] = null;
+                } else {
+                    currentGuessColors[i] = 'absent';
+                    if (!gameData.keyboardStatus[letter]) {
+                        gameData.keyboardStatus[letter] = 'absent';
+                    }
+                }
+            }
+
+            await new Promise(resolve => {
+                flipCells(currentGuessIndex, currentGuessColors);
+                const lastCell = gameGrid.querySelector(`[data-row="${currentGuessIndex}"][data-col="${WORD_LENGTH - 1}"]`);
+                if (lastCell) {
+                    lastCell.addEventListener('animationend', resolve, { once: true });
+                } else {
+                    resolve();
+                }
+            });
+
+            updateKeyboardColors(gameData.keyboardStatus);
+
+            gameData.guesses.push({
+                word: guessedWord,
+                letters: guessedWordLetters,
+                colors: currentGuessColors
+            });
+            saveGameDataForCurrentDifficulty();
+
+            if (guessedWord === secretWord) {
+                gameData.hasWon = true;
+                stats.played++;
+                stats.won++;
+                stats.currentStreak++;
+                stats.maxStreak = Math.max(stats.maxStreak, stats.currentStreak);
+                stats.guessDistribution[currentGuessIndex]++;
+                showToast(`🎉 Selamat! Anda berhasil menebak kata "${secretWord}"! 🎉`, 'win');
+                gameEnded = true;
+                saveGameDataForCurrentDifficulty();
+                setTimeout(showStatsModal, 2000);
+            } else if (currentGuessIndex === GUESSES_ALLOWED - 1) {
+                stats.played++;
+                stats.currentStreak = 0;
+                showToast(`Maaf! Kata rahasianya adalah "${secretWord}".`, 'lose');
+                gameEnded = true;
+                saveGameDataForCurrentDifficulty();
+                setTimeout(showStatsModal, 2000);
+            } else {
+                currentGuessIndex++;
+                currentRowLetters = [];
+                gameEnded = false;
+                enableKeyboard();
+            }
+
+            if (gameEnded) {
+                playAgainButton.style.display = 'block';
+                copyResultButton.style.display = 'block';
+                socialShareButtonsContainer.style.display = 'flex';
+                hintButton.style.display = 'none';
+            }
+            updateHintButton();
+        }
+
+        function disableKeyboard() {
+            document.removeEventListener('keydown', handlePhysicalKeyPress);
+            keyboardElement.querySelectorAll('.key').forEach(key => key.classList.add('disabled'));
+        }
+
+        function enableKeyboard() {
+            document.addEventListener('keydown', handlePhysicalKeyPress);
+            keyboardElement.querySelectorAll('.key').forEach(key => key.classList.remove('disabled'));
+        }
+
+        // --- Fungsi Hint ---
+        function updateHintButton() {
+            const hintsAllowed = DIFFICULTY_SETTINGS[currentDifficulty].hintCount;
+            const hintsRemaining = hintsAllowed - (gameData.hintsUsed || 0);
+
+            hintButton.textContent = `Hint (${hintsRemaining})`;
+            if (hintsRemaining <= 0 || gameEnded) {
+                hintButton.classList.add('disabled');
+                hintButton.style.display = 'none'; // Sembunyikan jika tidak ada hint atau game berakhir
+            } else {
+                hintButton.classList.remove('disabled');
+                hintButton.style.display = 'block'; // Tampilkan jika ada hint
+            }
+        }
+
+        function handleHint() {
+            if (gameEnded) return;
+
+            const hintsAllowed = DIFFICULTY_SETTINGS[currentDifficulty].hintCount;
+            if ((gameData.hintsUsed || 0) >= hintsAllowed) {
+                showToast('Tidak ada hint tersisa!', 'error');
+                return;
+            }
+
+            // Cari huruf di secretWord yang belum di-highlight 'correct' di keyboard
+            const secretWordLetters = secretWord.split('');
+            const availableHintLetters = secretWordLetters.filter(letter => {
+                // Filter out letters that are already 'correct' on the keyboard
+                return gameData.keyboardStatus[letter] !== 'correct';
+            });
+
+            if (availableHintLetters.length === 0) {
+                showToast('Semua huruf yang benar sudah terungkap!', 'info');
+                hintButton.classList.add('disabled'); // Disable if no more useful hints
+                return;
+            }
+
+            // Pilih huruf acak dari yang tersedia
+            const hintLetter = availableHintLetters[Math.floor(Math.random() * availableHintLetters.length)];
+
+            // Update status keyboard untuk huruf ini menjadi 'correct'
+            gameData.keyboardStatus[hintLetter] = 'correct';
+            updateKeyboardColors(gameData.keyboardStatus);
+
+            gameData.hintsUsed = (gameData.hintsUsed || 0) + 1;
+            saveGameDataForCurrentDifficulty();
+            updateHintButton();
+            showToast(`Huruf '${hintLetter}' ada di kata rahasia!`, 'info');
+        }
+
+
+        // --- Fungsi Statistik (Modal) ---
+        function updateStatsModal() {
+            document.getElementById('stat-played').textContent = stats.played;
+            document.getElementById('stat-win-perc').textContent = stats.played === 0 ? '0%' : `${Math.round((stats.won / stats.played) * 100)}%`;
+            document.getElementById('stat-current-streak').textContent = stats.currentStreak;
+            document.getElementById('stat-max-streak').textContent = stats.maxStreak;
+
+            const distributionChart = document.getElementById('distribution-chart');
+            distributionChart.innerHTML = '';
+            const maxCount = Math.max(...(stats.guessDistribution || []), 1);
+
+            stats.guessDistribution.forEach((count, index) => {
+                const barContainer = document.createElement('div');
+                barContainer.classList.add('distribution-bar-container');
+                const barWidth = (count / maxCount) * 100;
+                barContainer.innerHTML = `
+                    <span class="distribution-label">${index + 1}</span>
+                    <div class="distribution-bar">
+                        <div class="distribution-fill" style="width: ${barWidth}%;">
+                            ${count}
+                        </div>
+                    </div>
+                `;
+                distributionChart.appendChild(barContainer);
+            });
+        }
+
+        /**
+         * Mengatur tampilan bagian definisi kata di modal statistik.
+         * Tidak lagi melakukan fetch API, hanya menampilkan tautan manual.
+         * @param {string} word - Kata yang akan ditampilkan.
+         */
+        function updateDefinitionSection(word) {
+            definedWordElem.textContent = word;
+            wordClassElem.textContent = ''; // Kosongkan kelas kata
+            definitionLoadingElem.style.display = 'none'; // Sembunyikan loading
+            definitionErrorElem.style.display = 'none'; // Sembunyikan error
+
+            // Tampilkan pesan dan tautan ke KBBI Daring
+            wordMeaningElem.innerHTML = `
+                Definisi tidak dapat dimuat secara otomatis.
+                Silakan cek di <a id="kbbi-link-dynamic" href="https://kbbi.kemdikbud.go.id/entri/${word.toLowerCase()}" target="_blank" class="text-blue-500 underline">KBBI Daring</a>.
+            `;
+            // Update the global kbbiLinkElem reference if needed, or ensure it's always set
+            kbbiLinkElem.href = `https://kbbi.kemdikbud.go.id/entri/${word.toLowerCase()}`;
+        }
+
+
+        function showStatsModal() {
+            // Load stats for current difficulty before showing modal
+            loadGameDataForCurrentDifficulty();
+            updateStatsModal();
+            statsModalOverlay.classList.add('show');
+
+            // Handle win message display
+            if (gameData.hasWon) {
+                winMessageSection.style.display = 'block';
+                wonWordDisplay.textContent = secretWord;
+                playAgainFromStatsButton.style.display = 'block'; // Show play again button in stats modal
+            } else {
+                winMessageSection.style.display = 'none';
+                // If game is lost or not ended, still show play again button if game ended
+                if (gameEnded) {
+                    playAgainFromStatsButton.style.display = 'block';
+                } else {
+                    playAgainFromStatsButton.style.display = 'none'; // Hide if game is active or opened from menu
+                }
+            }
+
+            // Update definition section with manual link
+            if (gameEnded) {
+                updateDefinitionSection(secretWord);
+            } else {
+                // Clear definition if game is not ended (e.g., if modal is opened from main menu)
+                definedWordElem.textContent = '';
+                wordClassElem.textContent = '';
+                wordMeaningElem.innerHTML = `
+                    Definisi tidak dapat dimuat secara otomatis.
+                    Silakan cek di <a id="kbbi-link-dynamic" href="https://kbbi.kemdikbud.go.id/" target="_blank" class="text-blue-500 underline">KBBI Daring</a>.
+                `;
+                definitionLoadingElem.style.display = 'none';
+                definitionErrorElem.style.display = 'none';
+                kbbiLinkElem.href = `https://kbbi.kemdikbud.go.id/`; // Set default link
+            }
+        }
+
+        function hideStatsModal() {
+            statsModalOverlay.classList.remove('show');
+        }
+
+        function resetStats() {
+            // Replaced confirm with a custom modal for better UX and consistency
+            showCustomConfirm("Reset Statistik", "Anda yakin ingin mereset semua statistik untuk kesulitan ini? Ini tidak dapat dibatalkan.", () => {
+                stats = {
+                    played: 0,
+                    won: 0,
+                    currentStreak: 0,
+                    maxStreak: 0,
+                    guessDistribution: Array(GUESSES_ALLOWED).fill(0)
+                };
+                saveGameDataForCurrentDifficulty();
+                updateStatsModal();
+                showToast('Statistik telah direset!', "info");
+                hideStatsModal();
+            });
+        }
+
+        // Custom Confirm Modal (replaces alert/confirm)
+        function showCustomConfirm(title, message, onConfirm) {
+            const modalHtml = `
+                <div id="custom-confirm-modal-overlay" class="modal-overlay show">
+                    <div class="modal-content">
+                        <h2>${title}</h2>
+                        <p>${message}</p>
+                        <div class="modal-buttons">
+                            <button id="confirm-yes" class="menu-button">Ya</button>
+                            <button id="confirm-no" class="menu-button secondary">Tidak</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+            const overlay = document.getElementById('custom-confirm-modal-overlay');
+            document.getElementById('confirm-yes').addEventListener('click', () => {
+                onConfirm();
+                overlay.remove();
+            });
+            document.getElementById('confirm-no').addEventListener('click', () => {
+                overlay.remove();
+            });
+        }
+
+
+        // --- Fungsi Tentang Game (Modal) ---
+        function showAboutModal() {
+            aboutModalOverlay.classList.add('show');
+            // Mark that the "How to Play" modal has been shown
+            localStorage.setItem(HAS_SHOWN_HOW_TO_PLAY_KEY, 'true');
+        }
+
+        function hideAboutModal() {
+            aboutModalOverlay.classList.remove('show');
+        }
+
+        // --- Fungsi Rekor Pribadi (Personal Best) ---
+        function showPersonalBestModal() {
+            personalBestTableBody.innerHTML = ''; // Bersihkan tabel
+
+            Object.keys(DIFFICULTY_SETTINGS).forEach(diffKey => {
+                const diffLabel = DIFFICULTY_SETTINGS[diffKey].label;
+                // Uses local storage without userId
+                const statsKey = `${LOCAL_STORAGE_KEY_PREFIX}${diffKey}_stats`;
+                const savedStats = localStorage.getItem(statsKey);
+                let currentDiffStats = {
+                    played: 0,
+                    won: 0,
+                    currentStreak: 0,
+                    maxStreak: 0
+                };
+                if (savedStats) {
+                    const parsedStats = JSON.parse(savedStats);
+                    currentDiffStats.played = parsedStats.played || 0;
+                    currentDiffStats.won = parsedStats.won || 0;
+                    currentDiffStats.maxStreak = parsedStats.maxStreak || 0;
+                }
+
+                const winPercentage = currentDiffStats.played === 0 ? '0%' : `${Math.round((currentDiffStats.won / currentDiffStats.played) * 100)}%`;
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${diffLabel}</td>
+                    <td>${currentDiffStats.played}</td>
+                    <td>${currentDiffStats.won}</td>
+                    <td>${winPercentage}</td>
+                    <td>${currentDiffStats.maxStreak}</td>
+                `;
+                personalBestTableBody.appendChild(row);
+            });
+
+            personalBestModalOverlay.classList.add('show');
+        }
+
+        function hidePersonalBestModal() {
+            personalBestModalOverlay.classList.remove('show');
+        }
+
+        // --- Fungsi Berbagi Hasil (Umum) ---
+        function getShareText() {
+            let shareText = `Tebak Kata Harian (${DIFFICULTY_SETTINGS[currentDifficulty].label}) #${gameData.puzzleNumber} `;
+            if (gameData.hasWon) {
+                shareText += `${gameData.guesses.length}/${GUESSES_ALLOWED}\n\n`;
+            } else {
+                shareText += `X/${GUESSES_ALLOWED}\n\n`;
+            }
+
+            gameData.guesses.forEach(guess => {
+                guess.colors.forEach(color => {
+                    if (color === 'correct') {
+                        shareText += '🟩';
+                    } else if (color === 'present') {
+                        shareText += '🟨';
+                    } else {
+                        shareText += '⬜';
+                    }
+                });
+                shareText += '\n';
+            });
+
+            shareText += `\nKata Rahasia: ${secretWord}`;
+            shareText += `\nCek definisi di KBBI Daring: https://kbbi.kemdikbud.go.id/entri/${secretWord.toLowerCase()}`;
+            shareText += `\n\nMainkan di [Link Game Anda]`; // Ganti dengan link game Anda
+
+            return shareText;
+        }
+
+        // --- Fungsi Salin ke Clipboard ---
+        async function copyResultToClipboard() {
+            const textToCopy = getShareText();
+
+            // Try to use navigator.clipboard.writeText
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(textToCopy).then(() => {
+                    showToast('Hasil disalin ke clipboard!', "info");
+                }).catch(err => {
+                    console.error('Gagal menyalin ke clipboard:', err);
+                    fallbackCopyTextToClipboard(textToCopy);
+                });
+            } else {
+                fallbackCopyTextToClipboard(textToCopy);
+            }
+        }
+
+        // Fallback for copying text to clipboard (for older browsers/iframes)
+        function fallbackCopyTextToClipboard(text) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed"; // Avoid scrolling to bottom
+            textArea.style.left = "-9999px"; // Move off-screen
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                showToast('Hasil disalin ke clipboard! (Fallback)', "info");
+            } catch (err) {
+                showToast('Gagal menyalin hasil.', "error");
+            }
+            document.body.removeChild(textArea);
+        }
+
+        // --- Fungsi Berbagi ke Twitter ---
+        function shareToTwitter() {
+            const text = getShareText();
+            const tweetText = encodeURIComponent(text.substring(0, 240)); // Twitter limit
+            const url = `https://twitter.com/intent/tweet?text=${tweetText}`;
+            window.open(url, '_blank');
+        }
+
+        // --- Fungsi Berbagi ke Facebook ---
+        function shareToFacebook() {
+            const text = getShareText();
+            // Facebook sharing is often done via their share dialog, which needs a URL to share.
+            // For simple text, you might need to share a link to your game.
+            // Or, use the Facebook Share Dialog API if you have an app ID.
+            // For this simple app, we'll just open a generic share URL or prompt user to copy.
+            const shareUrl = encodeURIComponent("https://yourgameurl.com"); // Ganti dengan URL game Anda
+            const quote = encodeURIComponent(text);
+            const url = `https://www.facebook.com/sharer/sharer.php?u=${shareUrl}&quote=${quote}`;
+            window.open(url, '_blank');
+        }
+
+        // --- Fungsi Berbagi ke WhatsApp ---
+        function shareToWhatsApp() {
+            const text = getShareText();
+            const whatsappText = encodeURIComponent(text);
+            const url = `https://api.whatsapp.com/send?text=${whatsappText}`;
+            window.open(url, '_blank');
+        }
+
+
+        // --- Event Listeners Utama ---
+        function attachGlobalEventListeners() {
+            playButton.addEventListener('click', () => window.showScreen(difficultySelectionScreen));
+            showPersonalBestButtonMenu.addEventListener('click', showPersonalBestModal); 
+            showAboutButtonMenu.addEventListener('click', showAboutModal);
+
+            // Event listener for difficulty buttons
+            document.querySelectorAll('.difficulty-button').forEach(button => {
+                button.addEventListener('click', (event) => {
+                    const selectedDifficulty = event.target.dataset.difficulty;
+                    initGame(selectedDifficulty); // Start game with selected difficulty (not forcing new game)
+                });
+            });
+
+            backToMainMenuFromDifficulty.addEventListener('click', () => window.showScreen(mainMenuScreen));
+            backToMainMenuFromGame.addEventListener('click', () => window.showScreen(mainMenuScreen));
+
+            closeStatsButton.addEventListener('click', hideStatsModal);
+            closeAboutButton.addEventListener('click', hideAboutModal);
+            closePersonalBestButton.addEventListener('click', hidePersonalBestModal); 
+            
+            // Event listener for play again button in stats modal
+            playAgainFromStatsButton.addEventListener('click', () => {
+                hideStatsModal(); // Hide stats modal first
+                initGame(currentDifficulty, true); // Start a new game with current difficulty
+            });
+
+            resetStatsButton.addEventListener('click', resetStats);
+        }
+
+        // --- Inisialisasi Aplikasi ---
+        window.onload = async () => {
+            attachGlobalEventListeners();
+
+            // Muat daftar kata saat aplikasi pertama kali dimuat
+            await fetchWordList();
+
+            // Tampilkan menu utama
+            window.showScreen(mainMenuScreen);
+
+            // Tampilkan modal "Tentang Game" jika ini pertama kali dimainkan
+            const hasShownHowToPlay = localStorage.getItem(HAS_SHOWN_HOW_TO_PLAY_KEY);
+            if (!hasShownHowToPlay) {
+                showAboutModal();
+            }
+        };
+    </script>
+</body>
+</html>
